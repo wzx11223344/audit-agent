@@ -1,0 +1,281 @@
+# =============================================================================
+# AuditAgent 审计规则配置文件
+# =============================================================================
+# 本文件定义所有可配置的审计参数，包括评分权重、偏见关键词、
+# 严重度阈值和领域特定的检测模式。
+
+# ---------------------------------------------------------------------------
+# 评分权重 (Scoring Weights)
+# ---------------------------------------------------------------------------
+# 六个审计维度的权重，总和应为 1.0
+scoring:
+  coherence_weight: 0.20       # 一致性检查
+  claims_weight: 0.15          # 主张提取
+  assumptions_weight: 0.15     # 假设浮出
+  stakeholders_weight: 0.15    # 利益相关者分析
+  methodology_weight: 0.20     # 方法论审查
+  bias_weight: 0.15            # 偏见检测
+  pass_threshold: 70           # 通过阈值 (0-100)
+
+# ---------------------------------------------------------------------------
+# 严重度阈值 (Severity Thresholds)
+# ---------------------------------------------------------------------------
+# 各严重级别的分数下限
+severity_thresholds:
+  critical: 85   # >= 85 分: 严重问题
+  high: 65       # >= 65 分: 高严重度
+  medium: 40     # >= 40 分: 中等严重度
+  low: 15        # >= 15 分: 低严重度
+  # < 15 分: 信息级别
+
+# ---------------------------------------------------------------------------
+# 偏见检测关键词 (Bias Detection Keywords)
+# ---------------------------------------------------------------------------
+# 这些词汇/短语在文档中出现时，可能表示论证不严谨或存在偏见。
+# 每条规则包含：关键词、匹配模式(regex/substring/fuzzy)、严重度、说明。
+bias_keywords:
+  - keyword: "obviously"
+    pattern: substring
+    severity: medium
+    note: "暗示论证无需证据支持"
+
+  - keyword: "it is clear that"
+    pattern: substring
+    severity: medium
+    note: "回避提供具体证据，以断言代替论证"
+
+  - keyword: "unquestionably"
+    pattern: substring
+    severity: high
+    note: "压制合理的质疑和讨论空间"
+
+  - keyword: "everyone knows"
+    pattern: substring
+    severity: high
+    note: "诉诸流行观点，非实质性论证"
+
+  - keyword: "studies show"
+    pattern: substring
+    severity: medium
+    note: "不提供具体引用的模糊权威引用"
+
+  - keyword: "experts agree"
+    pattern: substring
+    severity: high
+    note: "匿名权威，回避具体专家和分歧"
+
+  - keyword: "without a doubt"
+    pattern: substring
+    severity: medium
+    note: "过度确定性，可能掩盖不确定性"
+
+  - keyword: "common sense"
+    pattern: substring
+    severity: medium
+    note: "以'常识'回避论证责任"
+
+  - keyword: "of course"
+    pattern: substring
+    severity: low
+    note: "跳过必要的推理步骤"
+
+  - keyword: "naturally"
+    pattern: substring
+    severity: low
+    note: "将需要论证的结论当作自然结果"
+
+  - keyword: "inevitably"
+    pattern: substring
+    severity: medium
+    note: "假设结果确定，忽略其他可能性"
+
+  - keyword: "always"
+    pattern: substring
+    severity: low
+    note: "过度泛化，忽略例外情况"
+
+  - keyword: "never"
+    pattern: substring
+    severity: low
+    note: "绝对化否定，可能存在反例"
+
+  - keyword: "undoubtedly"
+    pattern: substring
+    severity: medium
+    note: "用确定性修辞替代实质性论证"
+
+  - keyword: "the fact is"
+    pattern: substring
+    severity: medium
+    note: "以声称代替证据，将观点包装为事实"
+
+  - keyword: "we all"
+    pattern: regex
+    severity: medium
+    note: "虚假共识，假设读者与作者观点一致"
+
+  - keyword: "has proven"
+    pattern: substring
+    severity: high
+    note: "夸大证据强度（证明 vs 支持）"
+
+  - keyword: "clearly demonstrates"
+    pattern: substring
+    severity: medium
+    note: "以修辞替代对证据的严格审视"
+
+# ---------------------------------------------------------------------------
+# 领域特定检测模式 (Domain-Specific Detection Patterns)
+# ---------------------------------------------------------------------------
+domains:
+  economics:
+    description: "经济政策/经济学文档的特定检测规则"
+    claims_patterns:
+      - pattern: "GDP will grow by"
+        type: economic_forecast
+        severity: high
+        note: "GDP 预测需提供模型、假设条件、置信区间"
+      - pattern: "employment will increase by"
+        type: economic_forecast
+        severity: high
+        note: "就业预测需考虑劳动力市场摩擦"
+      - pattern: "inflation is expected to"
+        type: economic_forecast
+        severity: high
+        note: "通胀预测需说明使用的指标和模型"
+      - pattern: "the model predicts"
+        type: model_based_claim
+        severity: medium
+        note: "需要验证模型设定、参数估计和稳健性"
+      - pattern: "causal effect of"
+        type: causal_claim
+        severity: high
+        note: "因果主张需识别策略(IV/DID/RDD/RCT)和稳健性检验"
+      - pattern: "consumer surplus"
+        type: welfare_claim
+        severity: medium
+        note: "福利分析需说明消费者剩余计算方法和假设"
+      - pattern: "deadweight loss"
+        type: welfare_claim
+        severity: medium
+        note: "无谓损失估算需提供弹性参数来源"
+      - pattern: "elasticity of"
+        type: parameter_claim
+        severity: medium
+        note: "弹性参数需提供文献来源或估计方法"
+      - pattern: "cost-benefit"
+        type: methodology_claim
+        severity: medium
+        note: "成本收益分析需提供折现率和敏感性分析"
+      - pattern: "social cost of carbon"
+        type: parameter_claim
+        severity: high
+        note: "碳社会成本估算争议较大，需说明使用的模型版本"
+
+    methodology_checks:
+      - check: sample_size
+        description: "样本量是否充分？是否提供了功效分析？"
+      - check: endogeneity
+        description: "是否处理内生性问题？使用了什么识别策略？"
+      - check: selection_bias
+        description: "样本选择是否存在系统性偏差？"
+      - check: external_validity
+        description: "结论是否可推广到其他情境/人群/时期？"
+      - check: discount_rate
+        description: "折现率选择是否合理？是否进行了敏感性分析？"
+      - check: counterfactual
+        description: "是否明确说明了反事实基准？"
+      - check: confidence_intervals
+        description: "是否报告了置信区间而非仅报告点估计？"
+      - check: robustness
+        description: "是否进行了稳健性检验或替代设定检验？"
+
+  healthcare:
+    description: "医疗/卫生政策文档的特定检测规则"
+    claims_patterns:
+      - pattern: "reduces mortality by"
+        type: outcome_claim
+        severity: high
+      - pattern: "cost-effective"
+        type: economic_claim
+        severity: medium
+      - pattern: "QALY"
+        type: utility_claim
+        severity: medium
+      - pattern: "randomized controlled trial"
+        type: methodology_claim
+        severity: low
+      - pattern: "statistically significant"
+        type: statistical_claim
+        severity: low
+
+    methodology_checks:
+      - check: blinding
+        description: "是否采用了盲法（单盲/双盲/三盲）？"
+      - check: randomization
+        description: "随机化方法是否适当（简单随机/分层随机/区组随机）？"
+      - check: attrition
+        description: "失访率是多少？是否进行了意向性分析(ITT)？"
+      - check: confounding
+        description: "是否控制了已知混杂因素？"
+      - check: multiplicity
+        description: "多重比较问题是否得到处理？"
+      - check: generalizability
+        description: "试验人群是否代表目标人群？"
+
+  legal:
+    description: "法律/法规文档的特定检测规则"
+    claims_patterns:
+      - pattern: "according to precedent"
+        type: legal_authority
+        severity: medium
+      - pattern: "the statute requires"
+        type: statutory_claim
+        severity: high
+      - pattern: "constitutional right"
+        type: constitutional_claim
+        severity: high
+      - pattern: "jurisdiction"
+        type: jurisdictional_claim
+        severity: medium
+
+    methodology_checks:
+      - check: precedent_relevance
+        description: "引用的先例是否与当前案件实质相关？"
+      - check: statutory_interpretation
+        description: "法律条文解释是否考虑了文义/体系/目的/历史解释？"
+      - check: jurisdiction_scope
+        description: "管辖范围是否明确界定？"
+      - check: standing
+        description: "当事人是否具有诉讼资格？"
+
+# ---------------------------------------------------------------------------
+# LLM 配置 (LLM Configuration)
+# ---------------------------------------------------------------------------
+llm:
+  default_model: "local"        # local 或 api
+  local:
+    base_url: "http://localhost:11434/v1"
+    model_name: "qwen2.5:7b"
+    max_tokens: 4096
+    temperature: 0.0
+  api:
+    base_url: "https://api.openai.com/v1"
+    model_name: "gpt-4o"
+    max_tokens: 4096
+    temperature: 0.0
+
+# ---------------------------------------------------------------------------
+# 报告配置 (Report Configuration)
+# ---------------------------------------------------------------------------
+report:
+  include_line_references: true           # 是否在报告中包含行号引用
+  include_evidence_quotes: true           # 是否包含原文引用作为证据
+  color_scheme:
+    critical: "#DC3545"   # 红色
+    high: "#FD7E14"       # 橙色
+    medium: "#FFC107"     # 黄色
+    low: "#198754"        # 绿色
+    info: "#6C757D"       # 灰色
+  html_template: "default"                # 默认 HTML 模板
+  max_executive_summary_length: 500       # 执行摘要最大字数
